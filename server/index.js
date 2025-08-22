@@ -1,6 +1,7 @@
 
 // server/index.js
 import express from 'express';
+import path from 'path';
 import cors from 'cors';
 import dotenv from 'dotenv';
 import fs from 'fs';
@@ -245,4 +246,17 @@ app.delete('/entries/:id', async (req, res) => {
 
 app.listen(port, () => {
   console.log(`🚀 Server running at http://localhost:${port}`);
+});
+
+// Serve frontend build
+  // Serve static frontend
+  app.use(express.static(path.join(__dirname, "../client/build")));
+
+  // Catch-all: return frontend
+  app.get("*", (req, res) => {
+    res.sendFile(path.join(__dirname, "../client/build", "index.html"));
+  });
+
+app.get('*', (req, res) => {
+  res.sendFile(path.resolve('client', 'build', 'index.html'));
 });
