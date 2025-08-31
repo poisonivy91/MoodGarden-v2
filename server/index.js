@@ -2,6 +2,10 @@
 // server/index.js
 import express from 'express';
 import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 import cors from 'cors';
 import dotenv from 'dotenv';
 import fs from 'fs';
@@ -12,13 +16,14 @@ import { Storage } from '@google-cloud/storage';
 dotenv.config();
 
 const app = express();
-const port = process.env.PORT || 5000;
+const port = process.env.PORT || 8080;
 
 app.use(cors());
 app.use(express.json());
 
 // Initialize Google Cloud Storage
-const storage = new Storage({ keyFilename: './keys/moodgarden-469017-fe8abe6538fe.json' });
+const storage = new Storage();
+// const storage = new Storage({ keyFilename: './keys/moodgarden-469017-fe8abe6538fe.json' });
 const bucket = storage.bucket('moodgarden-images');
 
 // Health check route
@@ -248,15 +253,10 @@ app.listen(port, () => {
   console.log(`🚀 Server running at http://localhost:${port}`);
 });
 
-// Serve frontend build
-  // Serve static frontend
-  app.use(express.static(path.join(__dirname, "../client/build")));
+// Serve React build
+app.use(express.static(path.join(__dirname, "client/dist")));
 
-  // Catch-all: return frontend
-  app.get("*", (req, res) => {
-    res.sendFile(path.join(__dirname, "../client/build", "index.html"));
-  });
-
-app.get('*', (req, res) => {
-  res.sendFile(path.resolve('client', 'build', 'index.html'));
+// Catch-all for React Router
+app.get("*", (req, res) => {
+  res.sendFile(path.join(__dirname, "client/dist", "index.html"));
 });
