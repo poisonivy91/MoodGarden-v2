@@ -14,6 +14,15 @@ import { Storage } from '@google-cloud/storage';
 
 dotenv.config();
 
+// Tiny friendly boot logs (optional)
+console.log('[boot] Project:', process.env.GOOGLE_CLOUD_PROJECT);
+console.log('[boot] Location:', process.env.VERTEX_LOCATION || 'us-central1');
+console.log('[boot] Cred mode:',
+  process.env.GOOGLE_APPLICATION_CREDENTIALS ? 'file' :
+  process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON ? 'json' :
+  process.env.GOOGLE_APPLICATION_CREDENTIALS_B64 ? 'b64' : 'none'
+);
+
 const app = express();
 const port = process.env.PORT || 8080;
 
