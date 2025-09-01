@@ -6,3 +6,4 @@ node_modules
 *.json
 keys/
 server/keys/
+!package.json

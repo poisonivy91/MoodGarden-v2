@@ -1,0 +1,21 @@
+{
+  "name": "moodgarden-server",
+  "version": "1.0.0",
+  "type": "module",
+    "scripts": {
+      "start": "node server/index.js",
+      "dev": "nodemon server/index.js",
+      "gcp-build": "cd client && npm install && npm run build"
+    },
+  "dependencies": {
+    "@google-cloud/aiplatform": "^5.5.0",
+    "@google-cloud/firestore": "^7.11.3",
+    "@google-cloud/storage": "^7.16.0",
+    "axios": "^1.11.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "google-auth-library": "^10.2.1",
+    "pb-util": "^1.0.3"
+  }
+}
