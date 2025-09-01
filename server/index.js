@@ -1,4 +1,3 @@
-
 // server/index.js
 import express from 'express';
 import path from 'path';
@@ -22,8 +21,9 @@ app.use(cors());
 app.use(express.json());
 
 // Initialize Google Cloud Storage
-const storage = new Storage();
-// const storage = new Storage({ keyFilename: './keys/moodgarden-469017-fe8abe6538fe.json' });
+const storage = new Storage({
+  credentials: JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON),
+});
 const bucket = storage.bucket('moodgarden-images');
 
 // Health check route

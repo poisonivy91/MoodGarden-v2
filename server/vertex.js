@@ -9,7 +9,7 @@ const model = 'imagen-3.0-generate-001'; // ✅ verified working from console
 const endpoint = `https://${location}-aiplatform.googleapis.com/v1/projects/${project}/locations/${location}/publishers/google/models/${model}:predict`;
 
 const auth = new GoogleAuth({
-  keyFile: './keys/moodgarden-469017-fe8abe6538fe.json',
+  credentials: JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON),
   scopes: ['https://www.googleapis.com/auth/cloud-platform'],
 });
 
