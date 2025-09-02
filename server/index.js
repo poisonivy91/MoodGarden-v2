@@ -23,17 +23,44 @@ console.log('[boot] Cred mode:',
   process.env.GOOGLE_APPLICATION_CREDENTIALS_B64 ? 'b64' : 'none'
 );
 
-const app = express();
-const port = process.env.PORT || 8080;
+// --- Google Cloud Storage (flexible auth) ---
+function buildStorage() {
+  // 1) Prefer Secret File via GOOGLE_APPLICATION_CREDENTIALS
+  if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
+    return new Storage({ keyFilename: process.env.GOOGLE_APPLICATION_CREDENTIALS });
+  }
 
-app.use(cors());
-app.use(express.json());
+  // 2) JSON pasted into env var
+  if (process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON) {
+    let creds;
+    try {
+      creds = JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON);
+    } catch (e) {
+      console.error('Invalid GOOGLE_APPLICATION_CREDENTIALS_JSON:', e.message);
+      process.exit(1);
+    }
+    return new Storage({ credentials: creds });
+  }
 
-// Initialize Google Cloud Storage
-const storage = new Storage({
-  credentials: JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON),
-});
-const bucket = storage.bucket('moodgarden-images');
+  // 3) Optional: base64 variant
+  if (process.env.GOOGLE_APPLICATION_CREDENTIALS_B64) {
+    try {
+      const raw = Buffer.from(process.env.GOOGLE_APPLICATION_CREDENTIALS_B64, 'base64').toString('utf8');
+      return new Storage({ credentials: JSON.parse(raw) });
+    } catch (e) {
+      console.error('Invalid GOOGLE_APPLICATION_CREDENTIALS_B64:', e.message);
+      process.exit(1);
+    }
+  }
+
+  // 4) ADC fallback (only works on GCP runtimes with attached SA)
+  console.warn('No explicit creds found; using Application Default Credentials.');
+  return new Storage();
+}
+
+const storage = buildStorage();
+const bucketName = process.env.GCS_BUCKET || 'moodgarden-images';
+const bucket = storage.bucket(bucketName);
 
 // Health check route
 app.get('/health', (req, res) => {
