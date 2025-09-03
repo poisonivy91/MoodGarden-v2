@@ -19,7 +19,7 @@ dotenv.config();
 const app = express();
 const port = process.env.PORT || 8080;
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '2mb' })); // critical for POST body
 
 // Tiny friendly boot logs
 console.log('[boot] Project:', process.env.GOOGLE_CLOUD_PROJECT);
@@ -81,7 +81,6 @@ app.get('/test-image', async (req, res) => {
   }
 });
 
-// Route to create entry and generate mood flower
 // Mood-driven flower prompts
 const moodPrompts = {
   Calm: "a soft tropical orchid with pale blue petals, serene and delicate",
@@ -129,54 +128,62 @@ const moodPrompts = {
   Guilty: "a shadowed tropical nightshade, dark purple petals, secretive and remorseful",
   Enthusiastic: "a radiant tropical sunflower, bright yellow petals, energetic and passionate"
 };
+
+// POST /entries (guarded, always returns JSON, doesn't block on flower)
 app.post('/entries', async (req, res) => {
-  const { title, content, mood } = req.body;
-  if (!title || !content || !mood) {
-    return res.status(400).json({ error: 'Title, content, and mood are required.' });
-  }
-
-  const entryRef = db.collection('entries').doc();
-  const timestamp = Date.now();
-
-  await entryRef.set({
-    title,
-    content,
-    mood,
-    timestamp,
-    status: 'processing'
-  });
-
-  // background image generation
-  (async () => {
-    try {
-      const base64Image = await generateImage(
-    moodPrompts[mood] || `A tropical flower in vibrant colors that represents the mood: ${mood}. Photorealistic, botanical photography, no people.`
-      );
-      // Save image to Google Cloud Storage
-      const file = bucket.file(`flowers/${entryRef.id}.png`);
-      await file.save(Buffer.from(base64Image, 'base64'), { contentType: 'image/png' });
-
-      // Generate a signed URL (valid for 1 year)
-      const [url] = await file.getSignedUrl({
-        action: 'read',
-        expires: Date.now() + 365 * 24 * 60 * 60 * 1000, // 1 year
-      });
-      const publicUrl = url;
-
-      await entryRef.update({
-        flowerImageUrl: publicUrl,
-        status: 'completed',
-      });
-    } catch (err) {
-      console.error('Error generating image:', err);
-      await entryRef.update({ status: 'failed' });
+  try {
+    const { title, content, mood } = req.body || {};
+    if (!title || !content || !mood) {
+      return res.status(400).json({ ok: false, error: 'Title, content, and mood are required.' });
     }
-  })();
 
-  res.status(201).json({ id: entryRef.id, status: 'processing' });
+    const entryRef = db.collection('entries').doc();
+    const timestamp = Date.now();
+
+    await entryRef.set({
+      title,
+      content,
+      mood,
+      timestamp,
+      status: 'processing'
+    });
+
+    // background image generation
+    (async () => {
+      try {
+        const base64Image = await generateImage(
+          moodPrompts[mood] || `A tropical flower in vibrant colors that represents the mood: ${mood}. Photorealistic, botanical photography, no people.`
+        );
+        // Save image to Google Cloud Storage
+        const file = bucket.file(`flowers/${entryRef.id}.png`);
+        await file.save(Buffer.from(base64Image, 'base64'), { contentType: 'image/png' });
+
+        // Generate a signed URL (valid for 1 year)
+        const [url] = await file.getSignedUrl({
+          action: 'read',
+          expires: Date.now() + 365 * 24 * 60 * 60 * 1000, // 1 year
+        });
+        const publicUrl = url;
+
+        await entryRef.update({
+          flowerImageUrl: publicUrl,
+          status: 'completed',
+        });
+      } catch (err) {
+        console.error('Error generating image:', err);
+        await entryRef.update({ status: 'failed' });
+      }
+    })();
+
+    return res.json({ ok: true, id: entryRef.id, status: 'processing' }); // always valid JSON
+  } catch (e) {
+    console.error('POST /entries error:', e);
+    // IMPORTANT: still send JSON so the browser doesn’t crash on res.json()
+    return res.status(200).json({ ok: false, error: e.message || 'unknown' });
+  }
 });
 
-// Get all entries (with error handling)
+// Get all entries (ultra-safe, always returns array)
 app.get('/entries', async (req, res) => {
   try {
     const snapshot = await db.collection('entries').get();
@@ -184,7 +191,7 @@ app.get('/entries', async (req, res) => {
     res.json(entries);                 // ✅ normal case: array
   } catch (e) {
     console.error('GET /entries error:', e);
-    res.status(200).json([]);                          // ✅ fallback: still return an array (200)
+    res.status(200).json([]);          // ✅ fallback: still return an array, not 500/502
   }
 });
 
@@ -195,7 +202,6 @@ app.get('/entries/:id/flower-status', async (req, res) => {
   res.json(doc.data());
 });
 
-// Delete an entry
 // Update an entry
 app.put('/entries/:id', async (req, res) => {
   const { title, content, mood } = req.body;
@@ -221,7 +227,7 @@ app.put('/entries/:id', async (req, res) => {
       (async () => {
         try {
           const base64Image = await generateImage(
-            `A tropical flower in vibrant colors that represents the mood: ${mood}. Photorealistic, botanical photography, no people.`
+            moodPrompts[mood] || `A tropical flower in vibrant colors that represents the mood: ${mood}. Photorealistic, botanical photography, no people.`
           );
           const file = bucket.file(`flowers/${req.params.id}.png`);
 
