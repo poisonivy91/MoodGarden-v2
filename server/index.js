@@ -287,9 +287,11 @@ app.listen(port, () => {
 });
 
 // Serve React build
-app.use(express.static(path.join(__dirname, "client/dist")));
+const clientDistPath = path.resolve(__dirname, "../client/dist");
+console.log("[boot] Serving client from:", clientDistPath);
+app.use(express.static(clientDistPath));
 
 // Catch-all for React Router
 app.get("*", (req, res) => {
-  res.sendFile(path.join(__dirname, "client/dist", "index.html"));
+  res.sendFile(path.join(clientDistPath, "index.html"));
 });
