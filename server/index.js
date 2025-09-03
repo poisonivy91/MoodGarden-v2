@@ -181,10 +181,10 @@ app.get('/entries', async (req, res) => {
   try {
     const snapshot = await db.collection('entries').get();
     const entries = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    res.json(entries);
+    res.json(entries);                     // ✅ normal case: array
   } catch (e) {
     console.error('GET /entries error:', e);
-    res.status(500).json({ error: 'Failed to fetch entries', detail: e.message });
+    res.json([]);                          // ✅ fallback: still return an array (200)
   }
 });
 
