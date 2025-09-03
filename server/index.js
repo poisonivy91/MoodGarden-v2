@@ -176,11 +176,16 @@ app.post('/entries', async (req, res) => {
   res.status(201).json({ id: entryRef.id, status: 'processing' });
 });
 
-// Get all entries
+// Get all entries (with error handling)
 app.get('/entries', async (req, res) => {
-  const snapshot = await db.collection('entries').get();
-  const entries = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-  res.json(entries);
+  try {
+    const snapshot = await db.collection('entries').get();
+    const entries = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    res.json(entries);
+  } catch (e) {
+    console.error('GET /entries error:', e);
+    res.status(500).json({ error: 'Failed to fetch entries', detail: e.message });
+  }
 });
 
 // Get flower status for a single entry
@@ -290,6 +295,12 @@ app.use(express.static(clientDistPath));
 
 app.get("*", (req, res) => {
   res.sendFile(path.join(clientDistPath, "index.html"));
+});
+
+// Global error handler (safety net)
+app.use((err, req, res, next) => {
+  console.error('Unhandled error:', err);
+  res.status(500).json({ error: 'Internal server error' });
 });
 
 // Start server
