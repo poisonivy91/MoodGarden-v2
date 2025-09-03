@@ -180,11 +180,11 @@ app.post('/entries', async (req, res) => {
 app.get('/entries', async (req, res) => {
   try {
     const snapshot = await db.collection('entries').get();
-    const entries = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    res.json(entries);                     // ✅ normal case: array
+    const entries = snapshot.docs.map(d => ({ id: d.id, ...d.data() }));
+    res.json(entries);                 // ✅ normal case: array
   } catch (e) {
     console.error('GET /entries error:', e);
-    res.json([]);                          // ✅ fallback: still return an array (200)
+    res.status(200).json([]);                          // ✅ fallback: still return an array (200)
   }
 });
 
