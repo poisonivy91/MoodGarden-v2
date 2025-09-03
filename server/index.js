@@ -5,16 +5,23 @@ import { fileURLToPath } from 'url';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
+
 import cors from 'cors';
 import dotenv from 'dotenv';
 import fs from 'fs';
 import db from './db.js';
-import { generateImage } from './vertex.js';  // ✅ only one import
+import { generateImage } from './vertex.js';
 import { Storage } from '@google-cloud/storage';
 
 dotenv.config();
 
-// Tiny friendly boot logs (optional)
+// --- Express app ---
+const app = express();
+const port = process.env.PORT || 8080;
+app.use(cors());
+app.use(express.json());
+
+// Tiny friendly boot logs
 console.log('[boot] Project:', process.env.GOOGLE_CLOUD_PROJECT);
 console.log('[boot] Location:', process.env.VERTEX_LOCATION || 'us-central1');
 console.log('[boot] Cred mode:',
@@ -25,35 +32,24 @@ console.log('[boot] Cred mode:',
 
 // --- Google Cloud Storage (flexible auth) ---
 function buildStorage() {
-  // 1) Prefer Secret File via GOOGLE_APPLICATION_CREDENTIALS
+  // 1) Secret File path
   if (process.env.GOOGLE_APPLICATION_CREDENTIALS) {
     return new Storage({ keyFilename: process.env.GOOGLE_APPLICATION_CREDENTIALS });
   }
-
-  // 2) JSON pasted into env var
+  // 2) JSON env var
   if (process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON) {
     let creds;
-    try {
-      creds = JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON);
-    } catch (e) {
-      console.error('Invalid GOOGLE_APPLICATION_CREDENTIALS_JSON:', e.message);
-      process.exit(1);
-    }
+    try { creds = JSON.parse(process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON); }
+    catch (e) { console.error('Invalid GOOGLE_APPLICATION_CREDENTIALS_JSON:', e.message); process.exit(1); }
     return new Storage({ credentials: creds });
   }
-
-  // 3) Optional: base64 variant
+  // 3) Base64 env var
   if (process.env.GOOGLE_APPLICATION_CREDENTIALS_B64) {
     try {
       const raw = Buffer.from(process.env.GOOGLE_APPLICATION_CREDENTIALS_B64, 'base64').toString('utf8');
       return new Storage({ credentials: JSON.parse(raw) });
-    } catch (e) {
-      console.error('Invalid GOOGLE_APPLICATION_CREDENTIALS_B64:', e.message);
-      process.exit(1);
-    }
+    } catch (e) { console.error('Invalid GOOGLE_APPLICATION_CREDENTIALS_B64:', e.message); process.exit(1); }
   }
-
-  // 4) ADC fallback (only works on GCP runtimes with attached SA)
   console.warn('No explicit creds found; using Application Default Credentials.');
   return new Storage();
 }
@@ -61,6 +57,7 @@ function buildStorage() {
 const storage = buildStorage();
 const bucketName = process.env.GCS_BUCKET || 'moodgarden-images';
 const bucket = storage.bucket(bucketName);
+console.log('[boot] Bucket:', bucketName);
 
 // Health check route
 app.get('/health', (req, res) => {
