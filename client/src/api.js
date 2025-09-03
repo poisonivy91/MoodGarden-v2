@@ -1,4 +1,5 @@
-const API_BASE = "http://localhost:5000";
+// Use a dev URL locally; default to same-origin in production
+const API_BASE = import.meta.env.VITE_API_URL || "";
 
 export async function createEntry(title, content, mood) {
     const res = await fetch(`${API_BASE}/entries`, {
