@@ -282,16 +282,17 @@ app.delete('/entries/:id', async (req, res) => {
   }
 });
 
-app.listen(port, () => {
-  console.log(`🚀 Server running at http://localhost:${port}`);
-});
-
-// Serve React build
+// Serve React build (must be before app.listen)
 const clientDistPath = path.resolve(__dirname, "../client/dist");
 console.log("[boot] Serving client from:", clientDistPath);
+
 app.use(express.static(clientDistPath));
 
-// Catch-all for React Router
 app.get("*", (req, res) => {
   res.sendFile(path.join(clientDistPath, "index.html"));
+});
+
+// Start server
+app.listen(port, () => {
+  console.log(`🚀 Server running at http://localhost:${port}`);
 });
